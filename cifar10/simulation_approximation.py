@@ -2,6 +2,7 @@
 gray_combination用于得到器件可模拟的灰度值，
 返回的字典的key为灰度，value为该灰度值需要的能量密度、偏振角、绝对差(用于函数内哈希排序,后续可能用于衡量模拟效果？)
 """
+import numpy as np
 
 def gray_combination(energy_density:list[list[float]]|None=None,
                      polarized_light:list[list[float|int]]|None=None,
@@ -106,6 +107,34 @@ def gray_combination(energy_density:list[list[float]]|None=None,
         return all_gray
 
     else:raise KeyError("参数错误")
+
+"""
+gray_apx用于给指定的数据集按照字典变化最接近的灰度值
+"""
+def gray_apx(x_data:np.ndarray,gray_dic:dict,color:str)->np.ndarray:
+    apx_x_data=x_data.copy()
+
+    # key的numpy数组
+    keys_np = np.array(list(gray_dic.keys()))
+    # 查找表
+    lut = np.zeros(256, dtype=np.uint8)
+    for gray in range(256):
+        # 得到该灰度和每个key的距离
+        dif_np = np.abs(gray - keys_np)
+        # 最小值下标
+        min_idx = np.argmin(dif_np)
+        # 选取最短距离的key
+        lut[gray] = keys_np[min_idx]
+
+    if color == "R":color_through=0
+    elif color =="G":color_through=1
+    elif color =="B":color_through=2
+    else:raise KeyError("颜色参数错误")
+    # 根据查找表替换
+    best_key = lut[apx_x_data[..., color_through]]
+    apx_x_data[..., color_through] = best_key
+
+    return apx_x_data
 
 if __name__ == "__main__":
     # 能量密度mW/cm2 635nm波长
