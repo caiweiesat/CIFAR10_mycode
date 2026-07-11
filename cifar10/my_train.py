@@ -161,69 +161,91 @@ for experiment_number,(train_x_tensor,test_x_tensor) in enumerate(research_data_
     optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
 
 
-    # 损失list
-    loss_list = []
+    # 训练集损失list
+    loss_train_list = []
+    # 测试集损失list
+    loss_test_list = []
     #正确率list
     correct_list = []
+    # ==========训练轮数==========
     epochs = 1
 
     for i in range(epochs + 1):
-        if i == 0:  # 第0轮计算loss和正确率
-            # loss
+        if i == 0:  # 第0轮计算loss和正确率,但不更新权重
+            # 仅前向，确保评估模式时norm层可用
             model.train()
-            epoch_loss = 0
             with torch.no_grad():
-                for images, label in train_loader:
-                    pred = model(images)
-                    loss = criterion(pred, label)
-
-                    epoch_loss += loss.item()
-                # 训练集损失
-                avg_loss = epoch_loss / len(train_loader)
-                loss_list.append(avg_loss)
-            # 正确率
+                for images,labels in train_loader:
+                    outputs=model(images)
+            # 评估模式，正确率+训练集loss+测试集loss
             model.eval()
             correct = 0
             total = 0
+            epoch_loss_train = 0
+            epoch_loss_test = 0
             with torch.no_grad():
+                for images, labels in train_loader:
+                    outputs = model(images)
+                    loss=criterion(outputs,labels)
+                    epoch_loss_train += loss.item()
                 for images, labels in test_loader:
                     outputs = model(images)
                     _, pred = torch.max(outputs, dim=1)
                     total += labels.size(0)
                     correct += (pred == labels).sum().item()
+
+                    loss = criterion(outputs,labels)
+                    epoch_loss_test += loss.item()
+            # 正确率
             acc = correct / total
-            print(f"第{i}轮正确率{acc:.2f}")
             correct_list.append(acc)
-        else:  # 每轮训练计算loss和正确率
-            # loss
+            # 训练集损失
+            avg_loss_train = epoch_loss_train / len(train_loader)
+            loss_train_list.append(avg_loss_train)
+            # 测试集损失
+            avg_loss_test = epoch_loss_test / len(test_loader)
+            loss_test_list.append(avg_loss_test)
+
+            print(f"第{i}轮正确率{acc:.2f},训练集损失:{avg_loss_train:.4f},测试集损失:{avg_loss_test:.4f}")
+
+        else:  # 每轮训练计算loss和正确率,且更新权重
             model.train()
-            epoch_loss = 0
             for images, label in train_loader:
                 pred = model(images)
                 loss = criterion(pred, label)
-
+                # 更新权重
                 optimizer.zero_grad()
                 loss.backward()
                 optimizer.step()
 
-                epoch_loss += loss.item()
-
-            avg_loss = epoch_loss / len(train_loader)
-            loss_list.append(avg_loss)
-
-            # 正确率
             model.eval()
             correct = 0
             total = 0
+            epoch_loss_train = 0
+            epoch_loss_test = 0
             with torch.no_grad():
+                for images, labels in train_loader:
+                    outputs = model(images)
+                    loss = criterion(outputs,labels)
+                    epoch_loss_train += loss.item()
                 for images, labels in test_loader:
                     outputs = model(images)
                     _, pred = torch.max(outputs, dim=1)
                     total += labels.size(0)
                     correct += (pred == labels).sum().item()
+
+                    loss = criterion(outputs,labels)
+                    epoch_loss_test += loss.item()
+            # 正确率
             acc = correct / total
-            print(f"第{i}轮正确率{acc:.2f}")
             correct_list.append(acc)
+            # 训练集损失
+            avg_loss_train = epoch_loss_train / len(train_loader)
+            loss_train_list.append(avg_loss_train)
+            # 测试集损失
+            avg_loss_test = epoch_loss_test / len(test_loader)
+            loss_test_list.append(avg_loss_test)
+            print(f"第{i}轮正确率{acc:.2f},训练集损失:{avg_loss_train:.4f},测试集损失:{avg_loss_test:.4f}")
 
 
     experiment_name=("RGB_能量密度+偏振角",
@@ -236,19 +258,23 @@ for experiment_number,(train_x_tensor,test_x_tensor) in enumerate(research_data_
     # x轴：1~总轮数
     x = list(range(0, epochs + 1))
     # y轴：每轮损失
-    y = loss_list
-
+    y1 = loss_train_list
+    y2 = loss_test_list
     plt.figure(figsize=(8, 4))
-    plt.plot(x, y, color='red', marker='o', label='Train Loss')
+    plt.plot(x, y1, color='red', marker='o', label='Train Loss')
+    plt.plot(x, y2, color='blue', marker='s', label='Test Loss')
     # 强制X轴只显示整数
     plt.gca().xaxis.set_major_locator(MaxNLocator(integer=True))
     plt.xlabel("Epoch")
     plt.ylabel("Loss")
-    plt.title("Training Loss Curve")
+    plt.title("Train & test Loss Curve")
     plt.legend()
     plt.grid(True, alpha=0.3)
-    plt.savefig(f"训练集损失曲线{experiment_name[experiment_number]}.png", dpi=300)
+    plt.savefig(f"./cifar10_output/损失曲线{experiment_name[experiment_number]}.png", dpi=300)
     plt.close()
+    with open(f"./cifar10_output/损失{experiment_name[experiment_number]}.txt",'w',encoding="utf-8") as f:
+        for idx in range(epochs):
+            f.write(f"epoch={idx}   train loss={y1[idx]:.4f}  |  test loss={y2[idx]:.4f}\n")
 
     # x轴：1~总轮数
     x = list(range(0, epochs + 1))
@@ -265,5 +291,8 @@ for experiment_number,(train_x_tensor,test_x_tensor) in enumerate(research_data_
     plt.title("Training Accuracy Curve")
     plt.legend()
     plt.grid(True, alpha=0.3)
-    plt.savefig(f"正确率曲线{experiment_name[experiment_number]}.png", dpi=300)
+    plt.savefig(f"./cifar10_output/正确率曲线{experiment_name[experiment_number]}.png", dpi=300)
     plt.close()
+    with open(f"./cifar10_output/正确率{experiment_name[experiment_number]}.txt",'w',encoding="utf-8") as f:
+        for idx,accuracy in enumerate(correct_list):
+            f.write(f"epoch={idx}   accuracy={accuracy:.2f}\n")

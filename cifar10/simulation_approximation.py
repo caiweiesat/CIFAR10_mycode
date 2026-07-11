@@ -12,7 +12,7 @@ def gray_combination(energy_density:list[list[float]]|None=None,
     三种情况，只有能量密度调节，只有偏振角调节，能量密度和偏振角组合调节
     """
     if energy_density is not None and polarized_light is None:
-        print("只有能量密度调节")
+        # print("只有能量密度调节")
         min_current=energy_density[0][0]
         max_current=energy_density[-1][0]
         # 灰度 将电流映射到0-255范围
@@ -37,7 +37,7 @@ def gray_combination(energy_density:list[list[float]]|None=None,
         return all_gray
 
     elif polarized_light is not None and energy_density is None:
-        print("只有偏振角调节")
+        # print("只有偏振角调节")
         polarized_light.sort()
         min_current=polarized_light[0][0]
         max_current=polarized_light[-1][0]
@@ -64,7 +64,7 @@ def gray_combination(energy_density:list[list[float]]|None=None,
 
     elif energy_density is not None and polarized_light is not None\
             and energy_benchmark is not None and slope is not None:
-        print("偏振角和能量密度组合调节")
+        # print("偏振角和能量密度组合调节")
         # 能量比例 记录能量对比默认值(偏振角测试的能量密度)的比例
         # 格式为[[比例,能量密度],...]
         energy_radio = []
