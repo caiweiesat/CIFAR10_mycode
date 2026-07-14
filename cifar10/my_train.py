@@ -14,10 +14,10 @@ transform = transforms.Compose([
 ])
 
 # 加载数据集
-(x_train, y_train), (x_test, y_test) = load_all_cifar10(r"D:\PythonProject\cifar10\cifar-10-batches-py")
+(x_train, y_train), (x_test, y_test) = load_all_cifar10(r"D:\CIFAR10\cifar10\cifar-10-batches-py")
 
 # 读取类别名称
-meta_path = r"D:\PythonProject\cifar10\cifar-10-batches-py\batches.meta"
+meta_path = r"D:\CIFAR10\cifar10\cifar-10-batches-py\batches.meta"
 meta_data = unpickle(meta_path)
 class_names = meta_data["label_names"]
 
@@ -55,7 +55,9 @@ B_energy_and_polarized_gray = gray_combination(energy_density=B_energy_density,
                                                slope=B_slope)
 
 # 标准化参数
-norm = transforms.Normalize((0.4914, 0.4822, 0.4465), (0.2023, 0.1994, 0.2010))
+# norm = transforms.Normalize((0.4914, 0.4822, 0.4465), (0.2023, 0.1994, 0.2010))
+# 模拟后的参数
+norm = transforms.Normalize((0.4687, 0.4703, 0.4414), (0.3086, 0.2659, 0.2781))
 # 然后获取RGB三种情况下的数据集，单通道的数据集由RGB通道数据集做切片获得
 # RGB 能量密度
 RGB_energy_x_train = x_train.copy()
@@ -158,7 +160,7 @@ for experiment_number,(train_x_tensor,test_x_tensor) in enumerate(research_data_
         raise ValueError(".shape[1]的值应是3或1")
 
     criterion = nn.CrossEntropyLoss()
-    optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
+    optimizer = torch.optim.Adam(model.parameters(), lr=0.001,weight_decay=1e-4)
 
 
     # 训练集损失list
@@ -168,7 +170,7 @@ for experiment_number,(train_x_tensor,test_x_tensor) in enumerate(research_data_
     #正确率list
     correct_list = []
     # ==========训练轮数==========
-    epochs = 1
+    epochs = 30
 
     for i in range(epochs + 1):
         if i == 0:  # 第0轮计算loss和正确率,但不更新权重
@@ -274,7 +276,7 @@ for experiment_number,(train_x_tensor,test_x_tensor) in enumerate(research_data_
     plt.close()
     with open(f"./cifar10_output/损失{experiment_name[experiment_number]}.txt",'w',encoding="utf-8") as f:
         for idx in range(epochs):
-            f.write(f"epoch={idx}   train loss={y1[idx]:.4f}  |  test loss={y2[idx]:.4f}\n")
+            f.write(f"epoch={idx+1}   train loss={y1[idx]:.4f}  |  test loss={y2[idx]:.4f}\n")
 
     # x轴：1~总轮数
     x = list(range(0, epochs + 1))
@@ -296,3 +298,5 @@ for experiment_number,(train_x_tensor,test_x_tensor) in enumerate(research_data_
     with open(f"./cifar10_output/正确率{experiment_name[experiment_number]}.txt",'w',encoding="utf-8") as f:
         for idx,accuracy in enumerate(correct_list):
             f.write(f"epoch={idx}   accuracy={accuracy:.2f}\n")
+
+    break
