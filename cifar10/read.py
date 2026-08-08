@@ -2,8 +2,6 @@ import pickle
 import numpy as np
 import matplotlib.pyplot as plt
 
-from turn import *
-
 def unpickle(file_path):
     with open(file_path, "rb") as f:
         data = pickle.load(f, encoding="latin1")
@@ -74,12 +72,13 @@ if __name__ == "__main__":
     plt.savefig("目标.png", dpi=300, bbox_inches="tight")
     plt.close()
 
-    # 变化后
-    rgb_result=rgb_change(before_change, target_change)
-    plt.imshow(rgb_result)
-    plt.savefig("变化后.png", dpi=300, bbox_inches="tight")
-    plt.close()
+    # # 变化后
+    # rgb_result=rgb_change(before_change, target_change)
+    # plt.imshow(rgb_result)
+    # plt.savefig("变化后.png", dpi=300, bbox_inches="tight")
+    # plt.close()
 
+    #rgb_change已弃用
 
 
 
