@@ -1,3 +1,5 @@
+import sys
+
 import torchvision.transforms as transforms
 from torch.utils.data import DataLoader, TensorDataset
 import torch
@@ -46,10 +48,39 @@ B   能量密度+偏振角
 R_energy_gray, R_energy_lut = gray_combination(energy_density=R_energy_density)
 G_energy_gray, G_energy_lut = gray_combination(energy_density=G_energy_density)
 B_energy_gray, B_energy_lut = gray_combination(energy_density=B_energy_density)
+
+# write_lut_to_excel(R_energy_lut, r"C:\Users\25283\Desktop\lutdata.xlsx",
+#                    sheet_name="R能量密度", lut_mode="只有能量密度")
+# write_lut_to_excel(G_energy_lut, r"C:\Users\25283\Desktop\lutdata.xlsx",
+#                    sheet_name="G能量密度", lut_mode="只有能量密度")
+# write_lut_to_excel(B_energy_lut, r"C:\Users\25283\Desktop\lutdata.xlsx",
+#                    sheet_name="B能量密度", lut_mode="只有能量密度")
+
+# write_gray_data_to_excel(R_energy_gray, r"C:\Users\25283\Desktop\mydata.xlsx",
+#                          sheet_name="R能量密度",tuple_mode="只有能量密度")
+# write_gray_data_to_excel(G_energy_gray, r"C:\Users\25283\Desktop\mydata.xlsx",
+#                          sheet_name="G能量密度",tuple_mode="只有能量密度")
+# write_gray_data_to_excel(B_energy_gray, r"C:\Users\25283\Desktop\mydata.xlsx",
+#                          sheet_name="B能量密度",tuple_mode="只有能量密度")
+
 # 只有偏振角
 R_polarized_gray, R_polarized_lut = gray_combination(polarized_light=R_polarized_light)
 G_polarized_gray, G_polarized_lut = gray_combination(polarized_light=G_polarized_light)
 B_polarized_gray, B_polarized_lut = gray_combination(polarized_light=B_polarized_light)
+
+# write_lut_to_excel(R_polarized_lut, r"C:\Users\25283\Desktop\lutdata.xlsx",
+#                    sheet_name="R偏振角", lut_mode="只有偏振角")
+# write_lut_to_excel(G_polarized_lut, r"C:\Users\25283\Desktop\lutdata.xlsx",
+#                    sheet_name="G偏振角", lut_mode="只有偏振角")
+# write_lut_to_excel(B_polarized_lut, r"C:\Users\25283\Desktop\lutdata.xlsx",
+#                    sheet_name="B偏振角", lut_mode="只有偏振角")
+
+# write_gray_data_to_excel(R_polarized_gray, r"C:\Users\25283\Desktop\mydata.xlsx",
+#                          sheet_name="R偏振角",tuple_mode="只有偏振角")
+# write_gray_data_to_excel(G_polarized_gray, r"C:\Users\25283\Desktop\mydata.xlsx",
+#                          sheet_name="G偏振角",tuple_mode="只有偏振角")
+# write_gray_data_to_excel(B_polarized_gray, r"C:\Users\25283\Desktop\mydata.xlsx",
+#                          sheet_name="B偏振角",tuple_mode="只有偏振角")
 # 能量密度和偏振角组合
 R_energy_and_polarized_gray, R_energy_and_polarized_lut = gray_combination(energy_density=R_energy_density,
                                                                            polarized_light=R_polarized_light,
@@ -63,6 +94,21 @@ B_energy_and_polarized_gray, B_energy_and_polarized_lut = gray_combination(energ
                                                                            polarized_light=B_polarized_light,
                                                                            energy_benchmark=B_energy_benchmark,
                                                                            slope=B_slope)
+
+# write_lut_to_excel(R_energy_and_polarized_lut, r"C:\Users\25283\Desktop\lutdata.xlsx",
+#                    sheet_name="R能量密度和偏振角")
+# write_lut_to_excel(G_energy_and_polarized_lut, r"C:\Users\25283\Desktop\lutdata.xlsx",
+#                    sheet_name="G能量密度和偏振角")
+# write_lut_to_excel(B_energy_and_polarized_lut, r"C:\Users\25283\Desktop\lutdata.xlsx",
+#                    sheet_name="B能量密度和偏振角")
+
+# write_gray_data_to_excel(R_energy_and_polarized_gray, r"C:\Users\25283\Desktop\mydata.xlsx",
+#                          sheet_name="R能量密度和偏振角")
+# write_gray_data_to_excel(G_energy_and_polarized_gray, r"C:\Users\25283\Desktop\mydata.xlsx",
+#                          sheet_name="G能量密度和偏振角")
+# write_gray_data_to_excel(B_energy_and_polarized_gray, r"C:\Users\25283\Desktop\mydata.xlsx",
+#                          sheet_name="B能量密度和偏振角")
+
 # 模拟后的参数
 norm = transforms.Normalize((0.4687, 0.4703, 0.4414), (0.3086, 0.2659, 0.2781))
 # 标准化参数
