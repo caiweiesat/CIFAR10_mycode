@@ -1,10 +1,16 @@
+import sys
 import numpy as np
 import matplotlib.pyplot as plt
+
+from openpyxl import Workbook, load_workbook
+from openpyxl.styles import Font, Alignment, PatternFill
+import os
+import numpy as np
 from matplotlib.colors import LinearSegmentedColormap
 """
 gray_combination用于得到器件可模拟的灰度值，
 返回值1:字典的key为灰度，value为该灰度值需要的能量密度、偏振角、绝对差(用于函数内哈希排序)、电流值
-返回值2:0-255的查找表lut,[灰度值,偏振角,能量密度,与目标电流绝对差(现已改成灰度差，但变量名不好改)]
+返回值2:0-255的查找表lut,[灰度值,偏振角,能量密度,与目标灰度绝对差]
 """
 
 def gray_combination(energy_density:list[list[float]]|None=None,
@@ -298,22 +304,33 @@ def plot_energy_heatmap(energy_data: np.ndarray, figsize=(8, 8), cmap="viridis",
     plt.close()  # 释放画布，防止循环绘图内存泄漏
 
 
-def plot_sum_3ch_heatmap(rgb_data: np.ndarray, figsize=(8, 8), vmin=None, vmax=None, save_path=None,
+def plot_sum_3ch_heatmap(rgb_data: np.ndarray, channel: str = "sum", figsize=(8, 8), vmin=None, vmax=None, save_path=None,
                          dpi=300):
     """
-    输入32×32×3数组，沿通道维度求和，绘制32×32热力图
+    输入32×32×3数组，支持选择通道或者三通道求和绘制热力图
     配色规则：0 = 白色，数值越大颜色越红
-    :param rgb_data: shape=(32,32,3) numpy数组，3通道电流误差数据
+
+    :param rgb_data: shape=(32,32,3) numpy数组，3通道亮度误差数据
+    :param channel: 选择通道: "sum"(三通道求和) / "R" / "G" / "B"
     :param figsize: 画布大小
     :param vmin: 色标最小值，**必须设置vmin=0才能保证0为白色**
     :param vmax: 色标最大值，None自动适配数据
     :param save_path: 图片保存路径，如 "./current_error.png"；为None时不保存
     :param dpi: 保存图片分辨率
-    :return sum_data: 三通道求和后的(32,32)二维数组
+    :return out_data: 输出二维数组 (32,32)，求和或者单通道切片结果
     """
     assert rgb_data.shape == (32, 32, 3), "输入数组shape必须为 (32, 32, 3)"
 
-    sum_data = np.sum(rgb_data, axis=-1)
+    if channel.upper() == "SUM":
+        out_data = np.sum(rgb_data, axis=-1)
+    elif channel.upper() == "R":
+        out_data = rgb_data[..., 0]
+    elif channel.upper() == "G":
+        out_data = rgb_data[..., 1]
+    elif channel.upper() == "B":
+        out_data = rgb_data[..., 2]
+    else:
+        raise ValueError('channel 只能是 "sum", "R", "G", "B"')
 
     # 自定义色板：白色(0) → 浅橙 → 深红
     color_list = [
@@ -326,21 +343,191 @@ def plot_sum_3ch_heatmap(rgb_data: np.ndarray, figsize=(8, 8), vmin=None, vmax=N
     plt.figure(figsize=figsize)
     ax = plt.gca()
 
-    # 使用自定义白→红色板
-    im = ax.imshow(sum_data, cmap=white_red_cmap, vmin=vmin, vmax=vmax)
+    im = ax.imshow(out_data, cmap=white_red_cmap, vmin=vmin, vmax=vmax)
 
     cbar = plt.colorbar(im)
-    cbar.set_label("Sum Brightness Error")
+    cbar.set_label("Brightness Error")
 
     plt.xticks([])
     plt.yticks([])
-    plt.title("Sum of Three-Channel Brightness Error")
+
+    title_map = {
+        "SUM": "Sum of Three‑Channel Brightness Error",
+        "R": "R‑Channel Brightness Error",
+        "G": "G‑Channel Brightness Error",
+        "B": "B‑Channel Brightness Error"
+    }
+    plt.title(title_map[channel.upper()])
     plt.tight_layout()
 
     if save_path is not None:
         plt.savefig(save_path, dpi=dpi, bbox_inches="tight")
 
     plt.close()
+    return out_data
+
+
+def write_gray_data_to_excel(data_dict, file_path, sheet_name=None, tuple_mode="只有能量密度"):
+    """
+    将灰度‑参数数据写入Excel，每次调用新建一个分表，保持dict原始顺序。
+    写入列：灰度、偏振角、能量密度、电流值（不再写入绝对差）。
+    支持元组长度3 / 4，绝对差仅用于拆包定位，不输出。
+
+    参数:
+        data_dict: dict，key=灰度值
+                   value元组：
+                     4元素: (偏振角, 能量密度, 绝对差, 电流值)
+                     3元素由tuple_mode决定：
+                        "只有能量密度" → (能量密度, 绝对差, 电流值)
+                        "只有偏振角"   → (偏振角, 绝对差, 电流值)
+        file_path: Excel文件路径
+        sheet_name: 新建工作表名称，不传自动生成
+        tuple_mode: "只有能量密度" / "只有偏振角"，仅对3元素元组生效
+    """
+    rows = []
+    for gray, vals in data_dict.items():
+        if len(vals) == 4:
+            # 你的元组顺序：偏振角, 能量密度, 绝对差, 电流值
+            angle, energy, _abs_diff, current = vals
+        elif len(vals) == 3:
+            if tuple_mode == "只有能量密度":
+                energy, _abs_diff, current = vals
+                angle = None
+            elif tuple_mode == "只有偏振角":
+                angle, _abs_diff, current = vals
+                energy = None
+            else:
+                raise ValueError('tuple_mode只能为 "只有能量密度" 或 "只有偏振角"')
+        else:
+            raise ValueError(f"元组长度必须为3或4，得到 {len(vals)}")
+
+        rows.append((gray, angle, energy, current))
+
+    # 创建/加载工作簿
+    if os.path.exists(file_path):
+        wb = load_workbook(file_path)
+    else:
+        wb = Workbook()
+        wb.remove(wb.active)
+
+    # 处理sheet名称，避免重名
+    if sheet_name is None:
+        sheet_name = f"Sheet_{len(wb.sheetnames) + 1}"
+    sheet_name = sheet_name[:31]
+    if sheet_name in wb.sheetnames:
+        sheet_name = f"{sheet_name}_{len(wb.sheetnames) + 1}"
+
+    ws = wb.create_sheet(title=sheet_name)
+
+    # 表头
+    headers = ["灰度", "偏振角(°)", "能量密度(mW/cm²)", "电流值(nA)"]
+    header_fill = PatternFill(start_color="4472C4", end_color="4472C4", fill_type="solid")
+    header_font = Font(bold=True, color="FFFFFF")
+    for col, h in enumerate(headers, start=1):
+        cell = ws.cell(row=1, column=col, value=h)
+        cell.font = header_font
+        cell.fill = header_fill
+        cell.alignment = Alignment(horizontal="center", vertical="center")
+
+    # 写入数据，None会输出为空单元格
+    for r_idx, row in enumerate(rows, start=2):
+        for c_idx, val in enumerate(row, start=1):
+            ws.cell(row=r_idx, column=c_idx, value=val)
+
+    # 自适应列宽
+    for col in ws.columns:
+        max_len = 0
+        col_letter = col[0].column_letter
+        for cell in col:
+            if cell.value is not None:
+                max_len = max(max_len, len(str(cell.value)))
+        ws.column_dimensions[col_letter].width = max(max_len + 4, 10)
+
+    wb.save(file_path)
+    return sheet_name
+
+
+def write_lut_to_excel(lut, file_path, sheet_name=None, lut_mode="两者都有"):
+    """
+    将256长度的LUT查找表写入Excel，每次调用新建一个分表。
+
+    参数:
+        lut: list，长度256，索引0~255即目标灰度值
+             每个元素为list：
+               4元素: [实际灰度值, 偏振角, 能量密度, 绝对差]   → lut_mode="两者都有"
+               3元素由lut_mode决定：
+                 "只有偏振角" → [实际灰度值, 偏振角, 绝对差]，能量密度留空
+                 "只有能量密度" → [实际灰度值, 能量密度, 绝对差]，偏振角留空
+        file_path: Excel文件路径
+        sheet_name: 新建工作表名称，不传自动生成
+        lut_mode: "两者都有" / "只有偏振角" / "只有能量密度"
+
+    写入列：目标灰度值、实际灰度值、偏振角(°)、能量密度(mW/cm²)
+    绝对差仅用于拆包定位，不写入Excel。
+    """
+    rows = []
+    for target_gray, item in enumerate(lut):
+        if len(item) == 4:
+            actual_gray, angle, energy, _abs_diff = item
+        elif len(item) == 3:
+            if lut_mode == "只有偏振角":
+                actual_gray, angle, _abs_diff = item
+                energy = None
+            elif lut_mode == "只有能量密度":
+                actual_gray, energy, _abs_diff = item
+                angle = None
+            else:
+                raise ValueError('3元素LUT时，lut_mode必须为 "只有偏振角" 或 "只有能量密度"')
+        else:
+            raise ValueError(f"LUT元素长度必须为3或4，得到 {len(item)}")
+
+        rows.append((target_gray, actual_gray, angle, energy))
+
+    # 创建/加载工作簿
+    if os.path.exists(file_path):
+        wb = load_workbook(file_path)
+    else:
+        wb = Workbook()
+        wb.remove(wb.active)
+
+    # 处理sheet名称，避免重名
+    if sheet_name is None:
+        sheet_name = f"Sheet_{len(wb.sheetnames) + 1}"
+    sheet_name = sheet_name[:31]
+    if sheet_name in wb.sheetnames:
+        sheet_name = f"{sheet_name}_{len(wb.sheetnames) + 1}"
+
+    ws = wb.create_sheet(title=sheet_name)
+
+    # 表头（直接用 Unicode 上标 ²）
+    headers = ["目标灰度值", "实际灰度值", "偏振角(°)", "能量密度(mW/cm²)"]
+    header_fill = PatternFill(start_color="4472C4", end_color="4472C4", fill_type="solid")
+    header_font = Font(bold=True, color="FFFFFF")
+    center = Alignment(horizontal="center", vertical="center")
+
+    for col, h in enumerate(headers, start=1):
+        cell = ws.cell(row=1, column=col, value=h)
+        cell.font = header_font
+        cell.fill = header_fill
+        cell.alignment = center
+
+    # 写入数据
+    for r_idx, row in enumerate(rows, start=2):
+        for c_idx, val in enumerate(row, start=1):
+            ws.cell(row=r_idx, column=c_idx, value=val)
+
+    # 自适应列宽
+    for col in ws.columns:
+        max_len = 0
+        col_letter = col[0].column_letter
+        for cell in col:
+            if cell.value is not None:
+                max_len = max(max_len, len(str(cell.value)))
+        ws.column_dimensions[col_letter].width = max(max_len + 4, 12)
+
+    wb.save(file_path)
+    return sheet_name
+
 
 if __name__ == "__main__":
     import torchvision.transforms as transforms
@@ -421,7 +608,7 @@ if __name__ == "__main__":
 
 
     # RGB 能量密度+偏振角
-    R_energy_and_polarized_graylut=my_list_split(R_energy_and_polarized_lut,0)
+    R_energy_and_polarized_graylut = my_list_split(R_energy_and_polarized_lut,0)
     G_energy_and_polarized_graylut = my_list_split(G_energy_and_polarized_lut, 0)
     B_energy_and_polarized_graylut = my_list_split(B_energy_and_polarized_lut, 0)
 
@@ -486,39 +673,39 @@ if __name__ == "__main__":
                                                color="G", apx_x_data=RGB_energy_energy)
     RGB_energy_energy = gray_apx(x_train, B_energy_energylut,
                                                color="B", apx_x_data=RGB_energy_energy)
-    """绝对电流差"""
-    # 模拟(能量+角度)结果的电流绝对差
-    R_energy_and_polarized_currentlut = my_list_split(R_energy_and_polarized_lut, 3)
-    G_energy_and_polarized_currentlut = my_list_split(G_energy_and_polarized_lut, 3)
-    B_energy_and_polarized_currentlut = my_list_split(B_energy_and_polarized_lut, 3)
+    """绝对亮度差"""
+    # 模拟(能量+角度)结果的亮度绝对差
+    R_energy_and_polarized_brightnesslut = my_list_split(R_energy_and_polarized_lut, 3)
+    G_energy_and_polarized_brightnesslut = my_list_split(G_energy_and_polarized_lut, 3)
+    B_energy_and_polarized_brightnesslut = my_list_split(B_energy_and_polarized_lut, 3)
 
-    RGB_energy_and_polarized_current = gray_apx(x_train, R_energy_and_polarized_currentlut,
+    RGB_energy_and_polarized_current = gray_apx(x_train, R_energy_and_polarized_brightnesslut,
                                                 color="R")
-    RGB_energy_and_polarized_current = gray_apx(x_train, G_energy_and_polarized_currentlut,
+    RGB_energy_and_polarized_current = gray_apx(x_train, G_energy_and_polarized_brightnesslut,
                                                 color="G", apx_x_data=RGB_energy_and_polarized_current)
-    RGB_energy_and_polarized_current = gray_apx(x_train, B_energy_and_polarized_currentlut,
+    RGB_energy_and_polarized_current = gray_apx(x_train, B_energy_and_polarized_brightnesslut,
                                                 color="B", apx_x_data=RGB_energy_and_polarized_current)
-    # 模拟(能量)结果的电流绝对差
-    R_energy_currentlut = my_list_split(R_energy_lut, 2)
-    G_energy_currentlut = my_list_split(G_energy_lut, 2)
-    B_energy_currentlut = my_list_split(B_energy_lut, 2)
+    # 模拟(能量)结果的亮度绝对差
+    R_energy_brightnesslut = my_list_split(R_energy_lut, 2)
+    G_energy_brightnesslut = my_list_split(G_energy_lut, 2)
+    B_energy_brightnesslut = my_list_split(B_energy_lut, 2)
 
-    RGB_energy_current = gray_apx(x_train, R_energy_currentlut,
+    RGB_energy_current = gray_apx(x_train, R_energy_brightnesslut,
                                                 color="R")
-    RGB_energy_current = gray_apx(x_train, G_energy_currentlut,
+    RGB_energy_current = gray_apx(x_train, G_energy_brightnesslut,
                                                 color="G", apx_x_data=RGB_energy_current)
-    RGB_energy_current = gray_apx(x_train, B_energy_currentlut,
+    RGB_energy_current = gray_apx(x_train, B_energy_brightnesslut,
                                                 color="B", apx_x_data=RGB_energy_current)
-    # 模拟(角度)结果的电流绝对差
-    R_polarized_currentlut = my_list_split(R_polarized_lut, 2)
-    G_polarized_currentlut = my_list_split(G_polarized_lut, 2)
-    B_polarized_currentlut = my_list_split(B_polarized_lut, 2)
+    # 模拟(角度)结果的亮度绝对差
+    R_polarized_brightnesslut = my_list_split(R_polarized_lut, 2)
+    G_polarized_brightnesslut = my_list_split(G_polarized_lut, 2)
+    B_polarized_brightnesslut = my_list_split(B_polarized_lut, 2)
 
-    RGB_polarized_current = gray_apx(x_train, R_polarized_currentlut,
+    RGB_polarized_current = gray_apx(x_train, R_polarized_brightnesslut,
                                                 color="R")
-    RGB_polarized_current = gray_apx(x_train, G_polarized_currentlut,
+    RGB_polarized_current = gray_apx(x_train, G_polarized_brightnesslut,
                                                 color="G", apx_x_data=RGB_polarized_current)
-    RGB_polarized_current = gray_apx(x_train, B_polarized_currentlut,
+    RGB_polarized_current = gray_apx(x_train, B_polarized_brightnesslut,
                                                 color="B", apx_x_data=RGB_polarized_current)
     """分割线"""
     my_tasks=("energy_and_polarized","energy","polarized")
@@ -570,7 +757,7 @@ if __name__ == "__main__":
                     save_file = target_dir / f"{color}_energy_map.png"
                     plot_energy_heatmap(test_energy, save_path=save_file)
 
-            # 电流绝对差
+            # 亮度绝对差
             test_3ch=RGB_current[my_p,:,:,:]
             target_dir = f"./DemoPic/{task}/picture{pic_num}"
             Path(target_dir).mkdir(parents=True, exist_ok=True)
@@ -579,6 +766,13 @@ if __name__ == "__main__":
             # 拼接文件完整路径
             save_file = target_dir / f"brightness_error_sum.png"
             plot_sum_3ch_heatmap(test_3ch, vmin=0,vmax=200, save_path=save_file)
+
+            plot_sum_3ch_heatmap(test_3ch, channel="R", vmin=0, vmax=80,
+                                 save_path=target_dir / f"brightness_error_R.png")
+            plot_sum_3ch_heatmap(test_3ch, channel="G", vmin=0, vmax=80,
+                                 save_path=target_dir / f"brightness_error_G.png")
+            plot_sum_3ch_heatmap(test_3ch, channel="B", vmin=0, vmax=80,
+                                 save_path=target_dir / f"brightness_error_B.png")
 
             # 变化前
             plt.imshow(x_train[my_p])
