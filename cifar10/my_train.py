@@ -215,10 +215,21 @@ research_data_tuple=((RGB_energy_and_polarized_x_train_tensor,RGB_energy_and_pol
 train_y_tensor = torch.from_numpy(y_train).long()
 test_y_tensor = torch.from_numpy(y_test).long()
 for experiment_number,(train_x_tensor,test_x_tensor) in enumerate(research_data_tuple):
-    # if experiment_number==0:continue
+    experiment_name = ("RGB_能量密度+偏振角",
+                       "RGB_能量密度",
+                       "RGB_偏振角",
+                       "R_能量密度+偏振角",
+                       "G_能量密度+偏振角",
+                       "B_能量密度+偏振角")
+    if experiment_number!=1 and experiment_number!=2:continue
+    print(f"当前训练:{experiment_name[experiment_number]}")
     # 数据集
     train_set = TensorDataset(train_x_tensor, train_y_tensor)
+    """测试集 编码"""
     # test_set = TensorDataset(test_x_tensor, test_y_tensor)
+    """测试集 编码"""
+
+    """测试集 不编码"""
     if experiment_number==3:
         test_set = TensorDataset(origin_x_test[:,0:1,:,:], test_y_tensor)
     elif experiment_number==4:
@@ -227,6 +238,7 @@ for experiment_number,(train_x_tensor,test_x_tensor) in enumerate(research_data_
         test_set = TensorDataset(origin_x_test[:,2:3,:,:], test_y_tensor)
     else:
         test_set = TensorDataset(origin_x_test, test_y_tensor)
+    """测试集 不编码"""
     # 数据加载器
     train_loader = DataLoader(train_set, batch_size=64, shuffle=True)
     test_loader = DataLoader(test_set, batch_size=64, shuffle=False)
@@ -353,12 +365,7 @@ for experiment_number,(train_x_tensor,test_x_tensor) in enumerate(research_data_
             print(f"第{i}轮正确率{acc:.2f},训练集损失:{avg_loss_train:.4f},测试集损失:{avg_loss_test:.4f}")
 
 
-    experiment_name=("RGB_能量密度+偏振角",
-                     "RGB_能量密度",
-                     "RGB_偏振角",
-                     "R_能量密度+偏振角",
-                     "G_能量密度+偏振角",
-                     "B_能量密度+偏振角")
+
     print(f"{experiment_name[experiment_number]}训练完成")
     # x轴：1~总轮数
     x = list(range(0, epochs + 1))
@@ -377,10 +384,9 @@ for experiment_number,(train_x_tensor,test_x_tensor) in enumerate(research_data_
     plt.grid(True, alpha=0.3)
     plt.savefig(f"./cifar10_output/损失曲线{experiment_name[experiment_number]}.png", dpi=300)
     plt.close()
-    with open(f"./cifar10_output/损失{experiment_name[experiment_number]}.txt",'w',encoding="utf-8") as f:
-        for idx in range(epochs):
-            f.write(f"epoch={idx+1}   train loss={y1[idx]:.4f}  |  test loss={y2[idx]:.4f}\n")
-
+    with open(f"./cifar10_output/损失{experiment_name[experiment_number]}.txt", 'w', encoding="utf-8") as f:
+        for idx in range(len(y1)):
+            f.write(f"epoch={idx}   train loss={y1[idx]:.4f}  |  test loss={y2[idx]:.4f}\n")
     # x轴：1~总轮数
     x = list(range(0, epochs + 1))
     # y轴：每轮正确率
@@ -430,6 +436,17 @@ for experiment_number,(train_x_tensor,test_x_tensor) in enumerate(research_data_
     plt.savefig(f"./cifar10_output/混淆矩阵{experiment_name[experiment_number]}.png")
     plt.close()
 
+    # ============新增：保存模型============
+    save_path = f"./cifar10_output/model_{experiment_name[experiment_number]}.pth"
 
+    # 方式1【推荐】：只保存参数权重 state_dict
+    torch.save({
+        'epoch': epochs,
+        'model_state_dict': model.state_dict(),
+        'optimizer_state_dict': optimizer.state_dict(),
+        'final_train_loss': loss_train_list[-1],
+        'final_test_loss': loss_test_list[-1],
+        'final_acc': correct_list[-1],
+    }, save_path)
 
     # break
