@@ -628,7 +628,7 @@ if __name__ == "__main__":
 
 
     """偏振角"""
-    # 模拟(能量+角度)需要的偏振角
+    # 模拟(能量+角度)需要的偏振角lut
     R_energy_and_polarized_anglelut = my_list_split(R_energy_and_polarized_lut, 1)
     G_energy_and_polarized_anglelut = my_list_split(G_energy_and_polarized_lut, 1)
     B_energy_and_polarized_anglelut = my_list_split(B_energy_and_polarized_lut, 1)
@@ -639,7 +639,7 @@ if __name__ == "__main__":
                                               color="G", apx_x_data=RGB_energy_and_polarized_angle)
     RGB_energy_and_polarized_angle = gray_apx(x_train, B_energy_and_polarized_anglelut,
                                               color="B", apx_x_data=RGB_energy_and_polarized_angle)
-    # 模拟(角度)需要的偏振角
+    # 模拟(角度)需要的偏振角lut
     R_polarized_anglelut = my_list_split(R_polarized_lut, 1)
     G_polarized_anglelut = my_list_split(G_polarized_lut, 1)
     B_polarized_anglelut = my_list_split(B_polarized_lut, 1)
@@ -651,7 +651,7 @@ if __name__ == "__main__":
     RGB_polarized_angle = gray_apx(x_train, B_polarized_anglelut,
                                               color="B", apx_x_data=RGB_polarized_angle)
     """能量密度"""
-    # 模拟(能量+角度)需要的能量密度
+    # 模拟(能量+角度)需要的能量密度lut
     R_energy_and_polarized_energylut = my_list_split(R_energy_and_polarized_lut, 2)
     G_energy_and_polarized_energylut = my_list_split(G_energy_and_polarized_lut, 2)
     B_energy_and_polarized_energylut = my_list_split(B_energy_and_polarized_lut, 2)
@@ -662,7 +662,7 @@ if __name__ == "__main__":
                                                color="G", apx_x_data=RGB_energy_and_polarized_energy)
     RGB_energy_and_polarized_energy = gray_apx(x_train, B_energy_and_polarized_energylut,
                                                color="B", apx_x_data=RGB_energy_and_polarized_energy)
-    # 模拟(能量)需要的能量密度
+    # 模拟(能量)需要的能量密度lut
     R_energy_energylut = my_list_split(R_energy_lut, 1)
     G_energy_energylut = my_list_split(G_energy_lut, 1)
     B_energy_energylut = my_list_split(B_energy_lut, 1)
@@ -674,7 +674,7 @@ if __name__ == "__main__":
     RGB_energy_energy = gray_apx(x_train, B_energy_energylut,
                                                color="B", apx_x_data=RGB_energy_energy)
     """绝对亮度差"""
-    # 模拟(能量+角度)结果的亮度绝对差
+    # 模拟(能量+角度)结果的亮度绝对差lut
     R_energy_and_polarized_brightnesslut = my_list_split(R_energy_and_polarized_lut, 3)
     G_energy_and_polarized_brightnesslut = my_list_split(G_energy_and_polarized_lut, 3)
     B_energy_and_polarized_brightnesslut = my_list_split(B_energy_and_polarized_lut, 3)
@@ -685,7 +685,7 @@ if __name__ == "__main__":
                                                 color="G", apx_x_data=RGB_energy_and_polarized_current)
     RGB_energy_and_polarized_current = gray_apx(x_train, B_energy_and_polarized_brightnesslut,
                                                 color="B", apx_x_data=RGB_energy_and_polarized_current)
-    # 模拟(能量)结果的亮度绝对差
+    # 模拟(能量)结果的亮度绝对差lut
     R_energy_brightnesslut = my_list_split(R_energy_lut, 2)
     G_energy_brightnesslut = my_list_split(G_energy_lut, 2)
     B_energy_brightnesslut = my_list_split(B_energy_lut, 2)
@@ -696,7 +696,7 @@ if __name__ == "__main__":
                                                 color="G", apx_x_data=RGB_energy_current)
     RGB_energy_current = gray_apx(x_train, B_energy_brightnesslut,
                                                 color="B", apx_x_data=RGB_energy_current)
-    # 模拟(角度)结果的亮度绝对差
+    # 模拟(角度)结果的亮度绝对差lut
     R_polarized_brightnesslut = my_list_split(R_polarized_lut, 2)
     G_polarized_brightnesslut = my_list_split(G_polarized_lut, 2)
     B_polarized_brightnesslut = my_list_split(B_polarized_lut, 2)
